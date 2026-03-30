@@ -1,4 +1,4 @@
-# Techno ML App · LKS Cloud Computing Jawa Tengah 2025
+# Techno ML App · 
 
 Mini project Flask + Docker + EKS untuk simulasi **Amazon Rekognition** image label detection.
 
