@@ -105,13 +105,6 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Substitute image URI in deploy.yaml
-        env:
-          IMAGE_URI: ${{ needs.build-and-push-to-ecr.outputs.image_uri }}
-        run: |
-          sed -i "s|101606666695.dkr.ecr.us-east-1.amazonaws.com/techno-ecr-pati-keefa:latest|$IMAGE_URI|g" \
-            deployment/deploy.yaml
-
       - name: Apply Kubernetes manifests
         run: |
           kubectl apply -f deployment/deploy.yaml
