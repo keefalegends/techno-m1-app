@@ -44,15 +44,15 @@ aws ecr get-login-password --region us-east-1 | \
   <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com
 
 # Build image
-docker build -t techno-ecr-jepara-yourname .
+docker build -t techno-ecr-city-yourname .
 
 # Tag
 docker tag techno-ecr-jepara-yourname:latest \
-  <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/techno-ecr-jepara-yourname:latest
+  <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/techno-ecr-city-yourname:latest
 
 # Push
 docker push \
-  <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/techno-ecr-jepara-yourname:latest
+  <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/techno-ecr-city-yourname:latest
 ```
 
 ---
@@ -61,7 +61,7 @@ docker push \
 
 ```bash
 # Update kubeconfig
-aws eks update-kubeconfig --name techno-eks-jepara-yourname --region us-east-1
+aws eks update-kubeconfig --name techno-eks-city-yourname --region us-east-1
 
 # Edit deploy.yaml → ganti <ACCOUNT_ID> dengan account ID kamu
 
@@ -108,8 +108,8 @@ GitHub Actions akan menjalankan **3 jobs**:
 | Variable         | Default                          | Keterangan              |
 |------------------|----------------------------------|-------------------------|
 | `AWS_REGION`     | `us-east-1`                      | Region AWS              |
-| `INPUT_BUCKET`   | `technoinput-jepara-yourname`    | S3 bucket upload        |
-| `OUTPUT_BUCKET`  | `technooutput-jepara-yourname`   | S3 bucket hasil         |
+| `INPUT_BUCKET`   | `technoinput-city-yourname`      | S3 bucket upload        |
+| `OUTPUT_BUCKET`  | `technooutput-city-yourname`     | S3 bucket hasil         |
 | `DYNAMODB_TABLE` | `Tokens`                         | Tabel token DynamoDB    |
 | `PORT`           | `2000`                           | Port aplikasi           |
 
