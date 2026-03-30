@@ -47,7 +47,7 @@ aws ecr get-login-password --region us-east-1 | \
 docker build -t techno-ecr-city-yourname .
 
 # Tag
-docker tag techno-ecr-jepara-yourname:latest \
+docker tag techno-ecr-city-yourname:latest \
   <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/techno-ecr-city-yourname:latest
 
 # Push
