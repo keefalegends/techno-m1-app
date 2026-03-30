@@ -1,0 +1,59 @@
+# ─────────────────────────────────────────────────────────────
+#  deployment/deploy.yaml
+#  Deploy 2 pods of techno-ml-app on EKS
+#  Image pulled from ECR: techno-ecr-jepara-yourname
+# ─────────────────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: techno-ml-app
+  namespace: default
+  labels:
+    app: techno-ml-app
+    env: production
+spec:
+  replicas: 2                       # 2 pods as required by the module
+  selector:
+    matchLabels:
+      app: techno-ml-app
+  template:
+    metadata:
+      labels:
+        app: techno-ml-app
+    spec:
+      containers:
+        - name: techno-ml-app
+          # Replace <ACCOUNT_ID> and <CITY> with your actual values
+          image: 101606666695.dkr.ecr.us-east-1.amazonaws.com/techno-ecr-pati-keefa:latest
+          ports:
+            - containerPort: 2000
+          env:
+            - name: AWS_REGION
+              value: "us-east-1"
+            - name: INPUT_BUCKET
+              value: "technoinput-pati-keefa"
+            - name: OUTPUT_BUCKET
+              value: "technooutput-pati-keefa"
+            - name: DYNAMODB_TABLE
+              value: "Tokens"
+            - name: PORT
+              value: "2000"
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 2000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 2000
+            initialDelaySeconds: 5
+            periodSeconds: 10

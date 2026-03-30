@@ -1,0 +1,131 @@
+# ─────────────────────────────────────────────────────────────
+#  .github/workflows/lks-technocicd.yml
+#  CI/CD Pipeline: Build → Push to ECR → Deploy to EKS
+#  Three jobs as required by the module.
+# ─────────────────────────────────────────────────────────────
+name: LKS Techno CI/CD Pipeline
+
+on:
+  push:
+    tags:
+      - "v*"           # triggers on: git tag v1.0.0 && git push origin main --tags
+
+env:
+  AWS_REGION:    us-east-1
+  ECR_REPO:      techno-ecr-pati-keefa
+  EKS_CLUSTER:   games-cluster
+  IMAGE_TAG:     ${{ github.ref_name }}
+
+jobs:
+  # ── JOB 1: Build Docker image and push to ECR ──────────────
+  build-and-push-to-ecr:
+    name: Build and Push to ECR
+    runs-on: ubuntu-latest
+    outputs:
+      image_uri: ${{ steps.build.outputs.image_uri }}
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token:     ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region:            ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push image to ECR
+        id: build
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          IMAGE_URI=$REGISTRY/$ECR_REPO:$IMAGE_TAG
+          docker build -t $IMAGE_URI .
+          docker push $IMAGE_URI
+          # Also tag as latest
+          docker tag  $IMAGE_URI $REGISTRY/$ECR_REPO:latest
+          docker push $REGISTRY/$ECR_REPO:latest
+          echo "image_uri=$IMAGE_URI" >> $GITHUB_OUTPUT
+
+  # ── JOB 2: Configure kubeconfig for EKS ────────────────────
+  configure-kubeconfig:
+    name: Configure kubeconfig for EKS
+    runs-on: ubuntu-latest
+    needs: build-and-push-to-ecr
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token:     ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region:            ${{ env.AWS_REGION }}
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig \
+            --name $EKS_CLUSTER \
+            --region $AWS_REGION
+
+      - name: Verify cluster connection
+        run: kubectl get nodes
+
+  # ── JOB 3: Deploy to EKS ───────────────────────────────────
+  deploy-to-eks:
+    name: Deploy to EKS
+    runs-on: ubuntu-latest
+    needs: configure-kubeconfig
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token:     ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region:            ${{ env.AWS_REGION }}
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig \
+            --name $EKS_CLUSTER \
+            --region $AWS_REGION
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Substitute image URI in deploy.yaml
+        env:
+          IMAGE_URI: ${{ needs.build-and-push-to-ecr.outputs.image_uri }}
+        run: |
+          sed -i "s|101606666695.dkr.ecr.us-east-1.amazonaws.com/techno-ecr-pati-keefa:latest|$IMAGE_URI|g" \
+            deployment/deploy.yaml
+
+      - name: Apply Kubernetes manifests
+        run: |
+          kubectl apply -f deployment/deploy.yaml
+          kubectl apply -f deployment/service.yaml
+
+      - name: Wait for rollout
+        run: |
+          kubectl rollout status deployment/techno-ml-app --timeout=120s
+
+      - name: Get Load Balancer URL
+        run: |
+          echo "──────────────────────────────────────────"
+          echo "Load Balancer URL:"
+          kubectl get svc techno-ml-service \
+            -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
+          echo ""
+          echo "──────────────────────────────────────────"
